@@ -13,6 +13,9 @@ function initMap() {
     zoom: 10,
     center: { lat: 53.300, lng: -2.402 },
   });
+  const infowindow = new google.maps.InfoWindow({
+    content: '',
+  });
 
   // map.addListener("bounds_changed", (e) => { 
   //   console.log("bounds_changed ", e) 
@@ -55,6 +58,12 @@ function initMap() {
         });
         site.marker.addListener("click", () => {
           console.log(site.name+" clicked");
+          infowindow.setContent(buildInfoContent(site));
+          infowindow.open({
+            anchor: site.marker,
+            map,
+            shouldFocus: false,
+          });
         });
         markers.push(site);
       }
@@ -72,6 +81,18 @@ function initMap() {
   function isSiteAlreadyInCache(site) {
     return markers.findIndex(m => m.zmId === site.zmId)
   }
+
+  function buildInfoContent(site) {
+    let str=`<h4>${site.name}</h4>`;
+    str += `<p>${site.network}</p>`;
+    str += `<div class="row">`
+      
+      if (site.liveBusyness > 75) str+= `<span class="pill red">QUEUING</span>`;
+      else if (site.liveBusyness >= 50) str+= `<span class="pill amber">GETTING BUSY</span>`;
+      else str+= `<span class="pill green">QUIET</span>`;
+    str+= `</div>`;
+    return str;
+  }
 }
 
 function debounce(func, timeout = 300){
@@ -87,7 +108,6 @@ window.initMap = initMap;
 		</script>
   </head>
   <body>
-    <!--The div element for the map -->
     <div id="map"></div>
 
     <!-- 
