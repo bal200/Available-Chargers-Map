@@ -1,0 +1,104 @@
+<html>
+  <head>
+    <title>Idle Chargers</title>
+    <link rel="stylesheet" type="text/css" href="./style.css" />
+    <!-- <script type="module" src="./index.js"></script> -->
+
+		<script>
+function initMap() {
+  //const API_URL = 'https://us-central1-charger-availability.cloudfunctions.net';
+  const API_URL = 'http://localhost:5001/charger-availability/us-central1';
+  let markers = []
+  const map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 10,
+    center: { lat: 53.300, lng: -2.402 },
+  });
+
+  // map.addListener("bounds_changed", (e) => { 
+  //   console.log("bounds_changed ", e) 
+  //   loadChargersDebounced();
+  // });
+  map.addListener("drag", (e) => {
+    //console.log("drag ", e)
+    loadChargersDebounced();
+  });
+  map.addListener("zoom_changed", (e) => { 
+    //console.log("zoom_changed ", e) 
+    loadChargersDebounced();
+  });
+
+  function loadChargers() {
+    let b = map.getBounds();
+    let lat = b.getNorthEast().lat();
+    let lon2 = b.getNorthEast().lng();
+    let lat2 = b.getSouthWest().lat();
+    let lon = b.getSouthWest().lng();
+
+    console.log(`getbounds latlon (${lat.toFixed(3)}, ${lon.toFixed(3)}), latlon2 (${lat2.toFixed(3)}, ${lon2.toFixed(3)}) `);
+    apiLoadChargers(lat,lon, lat2,lon2).then(results => {
+      console.log("api result ", results);
+      for (let site of results) {
+        let found = isSiteAlreadyInCache(site)
+        if (found!==-1) {
+          markers[found].marker.setMap(null);
+          markers.splice(found, 1);
+        }
+        let iconUrl = "markers/green.png";
+        if (site.liveBusyness >= 50) iconUrl = "markers/orange.png";
+        if (site.liveBusyness > 75) iconUrl = "markers/red.png";
+        if (site.liveBusyness == undefined) iconUrl = "markers/grey.png";
+        site.marker = new google.maps.Marker({
+          position: { lat: site.latitude, lng: site.longitude },
+          map: map,
+          icon: { url: iconUrl },
+          label: site.liveBusyness ? ''+site.liveBusyness : '',
+        });
+        site.marker.addListener("click", () => {
+          console.log(site.name+" clicked");
+        });
+        markers.push(site);
+      }
+    });
+  }
+  const loadChargersDebounced = debounce(() => loadChargers(), 2000);
+
+  function apiLoadChargers(lat,lon, lat2,lon2) {
+    let url = `/getSites?lat=${lat}&lon=${lon}&lat2=${lat2}&lon2=${lon2}`;
+    return fetch(API_URL + url, {
+		  //headers: { 'X-Api-Key': API_KEY },
+	  })
+	  .then(res => res.json())
+  }
+  function isSiteAlreadyInCache(site) {
+    return markers.findIndex(m => m.zmId === site.zmId)
+  }
+}
+
+function debounce(func, timeout = 300){
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { func.apply(this, args); }, timeout);
+  };
+}
+
+window.initMap = initMap;
+
+		</script>
+  </head>
+  <body>
+    <!--The div element for the map -->
+    <div id="map"></div>
+
+    <!-- 
+     The `defer` attribute causes the callback to execute after the full HTML
+     document has been parsed. For non-blocking uses, avoiding race conditions,
+     and consistent behavior across browsers, consider loading using Promises
+     with https://www.npmjs.com/package/@googlemaps/js-api-loader.
+    -->
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA1NMWf8-_BgC7MHNhfOmeGD5rlbH_zYM4&callback=initMap&v=weekly"
+      defer
+    ></script>
+  </body>
+</html>
