@@ -1,6 +1,7 @@
 <html>
   <head>
     <title>Idle Chargers</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" type="text/css" href="./style.css" />
     <!-- <script type="module" src="./index.js"></script> -->
 
@@ -17,10 +18,10 @@ function initMap() {
     content: '',
   });
 
-  // map.addListener("bounds_changed", (e) => { 
-  //   console.log("bounds_changed ", e) 
-  //   loadChargersDebounced();
-  // });
+  map.addListener("bounds_changed", (e) => { 
+    //console.log("bounds_changed ", e) 
+    loadChargersDebounced();
+  });
   map.addListener("drag", (e) => {
     //console.log("drag ", e)
     loadChargersDebounced();
@@ -46,15 +47,15 @@ function initMap() {
           markers[found].marker.setMap(null);
           markers.splice(found, 1);
         }
-        let iconUrl = "markers/green.png";
-        if (site.liveBusyness >= 50) iconUrl = "markers/orange.png";
-        if (site.liveBusyness > 75) iconUrl = "markers/red.png";
-        if (site.liveBusyness == undefined) iconUrl = "markers/grey.png";
+        let iconUrl = "markers/chargerpin-green.png";
+        if (site.liveBusyness >= 50) iconUrl = "markers/chargerpin-orange.png";
+        if (site.liveBusyness > 75) iconUrl = "markers/chargerpin-red.png";
+        if (site.liveBusyness == undefined) iconUrl = "markers/chargerpin-grey.png";
         site.marker = new google.maps.Marker({
           position: { lat: site.latitude, lng: site.longitude },
           map: map,
           icon: { url: iconUrl },
-          label: site.liveBusyness ? ''+site.liveBusyness : '',
+          //label: site.liveBusyness ? ''+site.liveBusyness : '',
         });
         site.marker.addListener("click", () => {
           console.log(site.name+" clicked");
@@ -83,15 +84,32 @@ function initMap() {
   }
 
   function buildInfoContent(site) {
-    let str=`<h4>${site.name}</h4>`;
-    str += `<p>${site.network}</p>`;
-    str += `<div class="row">`
-      
-      if (site.liveBusyness > 75) str+= `<span class="pill red">QUEUING</span>`;
-      else if (site.liveBusyness >= 50) str+= `<span class="pill amber">GETTING BUSY</span>`;
-      else str+= `<span class="pill green">QUIET</span>`;
-    str+= `</div>`;
+    let str = `
+    <div class="row-top">
+      <div class="devices">`;
+        for (device of site.devices) {
+          str += `<img src="markers/charger-black.png" class="device-icon" />`;
+        }
+        str += `
+      </div>
+      <div>
+        <div class="name">${site.name}</div>
+        <div class="network">${site.network}</div>
+      </div>
+    </div>
+    <div class="row-bottom">
+      <div class="speed">50kw x2</div>
+      <div class="price">50p/kwh</div>`;
+      if (site.liveBusyness===null || site.liveBusyness===undefined) str+= `<span></span>`;
+      else if (site.liveBusyness > 75) str+= `<span class="pill red">BUSY</span>`;
+      else if (site.liveBusyness >= 50) str+= `<span class="pill orange">GETTING BUSY</span>`;
+      else if (site.liveBusyness >= 0) str+= `<span class="pill green"><span class="dot dark-green"></span>QUIET</span>`;
+      str+= `
+    </div>`;
     return str;
+  }
+  function calcSpeed(site) {
+
   }
 }
 
@@ -110,12 +128,10 @@ window.initMap = initMap;
   <body>
     <div id="map"></div>
 
-    <!-- 
-     The `defer` attribute causes the callback to execute after the full HTML
-     document has been parsed. For non-blocking uses, avoiding race conditions,
-     and consistent behavior across browsers, consider loading using Promises
-     with https://www.npmjs.com/package/@googlemaps/js-api-loader.
-    -->
+    <div class="top-tabs-panel">
+      <input id="fast-button" type="button" value="Fast Chargers" />
+      <input id="slow-button" type="button" value="Slow Chargers" />
+    </div>
     <script
       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA1NMWf8-_BgC7MHNhfOmeGD5rlbH_zYM4&callback=initMap&v=weekly"
       defer
