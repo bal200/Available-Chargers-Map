@@ -109,8 +109,20 @@ function initMap() {
     return str;
   }
   function calcSpeed(site) {
-
   }
+}
+
+function fastTabButtonClick() {
+  document.getElementById("fast-tab-button").classList.add("selected");
+  document.getElementById("slow-tab-button").classList.remove("selected");
+}
+function slowTabButtonClick() {
+  document.getElementById("fast-tab-button").classList.remove("selected");
+  document.getElementById("slow-tab-button").classList.add("selected");
+}
+window.onload = function() {
+  document.getElementById("fast-tab-button").addEventListener("click", fastTabButtonClick);
+  document.getElementById("slow-tab-button").addEventListener("click", slowTabButtonClick);
 }
 
 function debounce(func, timeout = 300){
@@ -126,11 +138,30 @@ window.initMap = initMap;
 		</script>
   </head>
   <body>
-    <div id="map"></div>
-
     <div class="top-tabs-panel">
-      <input id="fast-button" type="button" value="Fast Chargers" />
-      <input id="slow-button" type="button" value="Slow Chargers" />
+      <div id="fast-tab-button" class="tab selected seperator">
+        <div class="tab-inner">
+          <div class="tab-title">
+            <img class="tab-icon" src="markers/charger-icon.svg">
+            Fast Chargers
+          </div>
+          <div class="tab-subtext">50kw +</div>
+        </div>
+      </div>
+      <div id="slow-tab-button" class="tab">
+        <div class="tab-inner">
+          <div class="tab-title">
+            <img class="tab-icon" src="markers/charger-icon.svg">
+            Slow Chargers
+          </div>
+          <div class="tab-subtext">
+            When you plan to leave your car.  Show slow & fast.  7kw +.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="map-wrap">
+      <div id="map"></div>
     </div>
     <script
       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA1NMWf8-_BgC7MHNhfOmeGD5rlbH_zYM4&callback=initMap&v=weekly"
