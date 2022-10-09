@@ -54,7 +54,11 @@ function initMap() {
         site.marker = new google.maps.Marker({
           position: { lat: site.latitude, lng: site.longitude },
           map: map,
-          icon: { url: iconUrl },
+          label: '75p/kwh',
+          icon: {
+            url: iconUrl,
+            labelOrigin: new google.maps.Point(14, 47)
+          },
           //label: site.liveBusyness ? ''+site.liveBusyness : '',
         });
         site.marker.addListener("click", () => {
@@ -143,7 +147,7 @@ window.initMap = initMap;
         <div class="tab-inner">
           <div class="tab-title">
             <img class="tab-icon" src="markers/charger-icon.svg">
-            Fast Chargers
+            Rapid Chargers
           </div>
           <div class="tab-subtext">50kw +</div>
         </div>
@@ -155,7 +159,7 @@ window.initMap = initMap;
             All Chargers
           </div>
           <div class="tab-subtext">
-            7kw +
+            For charging at your destination. 7kw +
           </div>
         </div>
       </div>
