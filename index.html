@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>Idle Chargers</title>
+    <title>Available Chargers</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" type="text/css" href="./style.css" />
     <!-- <script type="module" src="./index.js"></script> -->
@@ -9,7 +9,7 @@
 function initMap() {
   const API_URL = 'https://us-central1-charger-availability.cloudfunctions.net';
   //const API_URL = 'http://localhost:5001/charger-availability/us-central1';
-  let markers = []
+  let sites = []
   const map = new google.maps.Map(document.getElementById("map"), {
     zoom: 10,
     center: { lat: 53.300, lng: -2.402 },
@@ -31,7 +31,7 @@ function initMap() {
     loadChargersDebounced();
   });
 
-  function loadChargers() {
+  async function loadChargers() {
     let b = map.getBounds();
     let lat = b.getNorthEast().lat();
     let lon2 = b.getNorthEast().lng();
@@ -39,27 +39,38 @@ function initMap() {
     let lon = b.getSouthWest().lng();
 
     console.log(`getbounds latlon (${lat.toFixed(3)}, ${lon.toFixed(3)}), latlon2 (${lat2.toFixed(3)}, ${lon2.toFixed(3)}) `);
-    apiLoadChargers(lat,lon, lat2,lon2).then(results => {
-      console.log("api result ", results);
-      for (let site of results) {
-        let found = isSiteAlreadyInCache(site)
-        if (found!==-1) {
-          markers[found].marker.setMap(null);
-          markers.splice(found, 1);
+    results = await apiLoadChargers(lat,lon, lat2,lon2);
+    console.log("api result ", results);
+
+    for (let site of results) {
+      let found = isSiteAlreadyInCache(site)
+      let oldSite = found==-1 ? undefined : sites[found];
+      if (oldSite) {  /* EXISTING */
+        site.marker = oldSite.marker;
+        sites[found] = site;
+      }
+      let iconUrl = "markers/chargerpin-green.png", label = "QUIET";
+      if (site.liveBusyness >= 50) {iconUrl = "markers/chargerpin-orange.png"; label="BUSY";}
+      if (site.liveBusyness > 75) {iconUrl = "markers/chargerpin-red.png"; label="QUEUING"}
+      if (site.liveBusyness === undefined) {iconUrl = "markers/chargerpin-grey.png"; label="";}
+      if (oldSite) {
+        /* UPDATE any marker attributes if different */
+        if (oldSite.marker?.getIcon().url !== iconUrl) {
+          site.marker.setIcon({
+            url: iconUrl,
+            labelOrigin: new google.maps.Point(14, 47)
+          });
         }
-        let iconUrl = "markers/chargerpin-green.png";
-        if (site.liveBusyness >= 50) iconUrl = "markers/chargerpin-orange.png";
-        if (site.liveBusyness > 75) iconUrl = "markers/chargerpin-red.png";
-        if (site.liveBusyness == undefined) iconUrl = "markers/chargerpin-grey.png";
+      } else {
+        /* CREATE new marker */
         site.marker = new google.maps.Marker({
           position: { lat: site.latitude, lng: site.longitude },
           map: map,
-          label: '75p/kwh',
+          label,
           icon: {
             url: iconUrl,
             labelOrigin: new google.maps.Point(14, 47)
           },
-          //label: site.liveBusyness ? ''+site.liveBusyness : '',
         });
         site.marker.addListener("click", () => {
           console.log(site.name+" clicked");
@@ -70,11 +81,13 @@ function initMap() {
             shouldFocus: false,
           });
         });
-        markers.push(site);
       }
-    });
+      if (!oldSite) {
+        sites.push(site);
+      }
+    }
   }
-  const loadChargersDebounced = debounce(() => loadChargers(), 2000);
+  const loadChargersDebounced = debounce(() => loadChargers(), 1000);
 
   function apiLoadChargers(lat,lon, lat2,lon2) {
     let url = `/getSites?lat=${lat}&lon=${lon}&lat2=${lat2}&lon2=${lon2}`;
@@ -84,7 +97,7 @@ function initMap() {
 	  .then(res => res.json())
   }
   function isSiteAlreadyInCache(site) {
-    return markers.findIndex(m => m.zmId === site.zmId)
+    return sites.findIndex(s => s.zmId === site.zmId)
   }
 
   function buildInfoContent(site) {
