@@ -3,12 +3,12 @@
     <title>Available Chargers</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" type="text/css" href="./style.css" />
-    <!-- <script type="module" src="./index.js"></script> -->
+    <script src="./histogram.js"></script>
 
 		<script>
+//const API_URL = 'https://us-central1-charger-availability.cloudfunctions.net';
+const API_URL = 'http://localhost:5001/charger-availability/us-central1';
 function initMap() {
-  const API_URL = 'https://us-central1-charger-availability.cloudfunctions.net';
-  //const API_URL = 'http://localhost:5001/charger-availability/us-central1';
   let sites = []
   const map = new google.maps.Map(document.getElementById("map"), {
     zoom: 10,
@@ -50,9 +50,10 @@ function initMap() {
         sites[found] = site;
       }
       let iconUrl = "markers/chargerpin-green.png", label = "QUIET";
-      if (site.liveBusyness >= 50) {iconUrl = "markers/chargerpin-orange.png"; label="BUSY";}
-      if (site.liveBusyness > 75) {iconUrl = "markers/chargerpin-red.png"; label="QUEUING"}
-      if (site.liveBusyness === undefined) {iconUrl = "markers/chargerpin-grey.png"; label="";}
+      let status = parseInt(site.statusCcs);
+      if (status >= 50) {iconUrl = "markers/chargerpin-orange.png"; label="BUSY";}
+      if (status > 75) {iconUrl = "markers/chargerpin-red.png"; label="QUEUING"}
+      if (site.statusCcs === undefined) {iconUrl = "markers/chargerpin-grey.png"; label="";}
       if (oldSite) {
         /* UPDATE any marker attributes if different */
         if (oldSite.marker?.getIcon().url !== iconUrl) {
@@ -60,6 +61,9 @@ function initMap() {
             url: iconUrl,
             labelOrigin: new google.maps.Point(14, 47)
           });
+        }
+        if (oldSite.marker?.getLabel() !== label) {
+          site.marker.setLabel(label);
         }
       } else {
         /* CREATE new marker */
@@ -72,7 +76,7 @@ function initMap() {
             labelOrigin: new google.maps.Point(14, 47)
           },
         });
-        site.marker.addListener("click", () => {
+        site.marker.addListener("click", async () => {
           console.log(site.name+" clicked");
           infowindow.setContent(buildInfoContent(site));
           infowindow.open({
@@ -80,6 +84,8 @@ function initMap() {
             map,
             shouldFocus: false,
           });
+          let res = await getHistogram(site);
+          document.getElementById('histogram').innerHTML = buildHistogram(res);
         });
       }
       if (!oldSite) {
@@ -87,7 +93,7 @@ function initMap() {
       }
     }
   }
-  const loadChargersDebounced = debounce(() => loadChargers(), 1000);
+  const loadChargersDebounced = debounce(() => loadChargers(), 500);
 
   function apiLoadChargers(lat,lon, lat2,lon2) {
     let url = `/getSites?lat=${lat}&lon=${lon}&lat2=${lat2}&lon2=${lon2}`;
@@ -97,7 +103,7 @@ function initMap() {
 	  .then(res => res.json())
   }
   function isSiteAlreadyInCache(site) {
-    return sites.findIndex(s => s.zmId === site.zmId)
+    return sites.findIndex(s => s.id === site.id)
   }
 
   function buildInfoContent(site) {
@@ -114,19 +120,30 @@ function initMap() {
         <div class="network">${site.network}</div>
       </div>
     </div>
+    <div id="histogram"></div>
     <div class="row-bottom">
-      <div class="speed">50kw x2</div>
-      <div class="price">50p/kwh</div>`;
-      if (site.liveBusyness===null || site.liveBusyness===undefined) str+= `<span></span>`;
-      else if (site.liveBusyness > 75) str+= `<span class="pill red">BUSY</span>`;
-      else if (site.liveBusyness >= 50) str+= `<span class="pill orange">GETTING BUSY</span>`;
-      else if (site.liveBusyness >= 0) str+= `<span class="pill green"><span class="dot dark-green"></span>QUIET</span>`;
+      <div class="speed">--kw x2</div>
+      <div class="price">--p/kwh</div>`;
+      let status = parseInt(site.statusCcs);
+      if (site.statusCcs===null || site.statusCcs===undefined) str+= `<span></span>`;
+      else if (status > 75) str+= `<span class="pill red">QUEUING</span>`;
+      else if (status >= 50) str+= `<span class="pill orange">BUSY</span>`;
+      else if (status >= 0) str+= `<span class="pill green"><span class="dot dark-green"></span>QUIET</span>`;
       str+= `
     </div>`;
     return str;
   }
-  function calcSpeed(site) {
-  }
+}
+
+function getHistogram(site) {
+  let url = `/getHistogram?site=${site.id}&type=json`;
+  return fetch(API_URL + url, {
+    // mode: 'no-cors',
+	})
+	.then(res => res.json())
+  .catch(error => {
+    console.log("getHistogram ERROR: ", error)
+  });
 }
 
 function fastTabButtonClick() {
