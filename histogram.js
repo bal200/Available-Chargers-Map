@@ -1,19 +1,30 @@
-function buildHistogram(data) {
+function buildHistogram(data, site) {
 	let nowHour = new Date().getUTCHours();
 
 	let str = `
 	<div class="outer">
+	<div class="axis-line"></div>
 		<div class="graph">`
 			for(let n=0; n<24; n++) {
 				str+=`<div class="column">`
-				if (data[n]) {
+				if (n==nowHour) {
+					let busy = site.busynessCcs?.split(',');
+					if (busy[2]>0) {
+						let barHeight = busy[2] / busy[0] * 100;
+						str+=`<div class="broken now" style="height:${barHeight}%"></div>`
+					}
+					if (busy[1]>0) {
+						let barHeight = busy[1] / busy[0] * 100;
+						str+=`<div class="busy now" style="height:${barHeight}%"></div>`
+					}
+				}else if (data[n]) {
 					if (data[n][2]>0) {
 						let barHeight = data[n][2] / data[n][0] * 100;
-						str+=`<div class="broken${n==nowHour?' now':''}" style="height:${barHeight}%"></div>`
+						str+=`<div class="broken" style="height:${barHeight}%"></div>`
 					}
 					if (data[n][1]>0) {
 						let barHeight = data[n][1] / data[n][0] * 100;
-						str+=`<div class="busy${n==nowHour?' now':''}" style="height:${barHeight}%"></div>`
+						str+=`<div class="busy" style="height:${barHeight}%"></div>`
 					}
 				}
 				str+=`</div>`

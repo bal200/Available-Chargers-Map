@@ -6,8 +6,8 @@
     <script src="./histogram.js"></script>
 
 		<script>
-//const API_URL = 'https://us-central1-charger-availability.cloudfunctions.net';
-const API_URL = 'http://localhost:5001/charger-availability/us-central1';
+const API_URL = 'https://us-central1-charger-availability.cloudfunctions.net';
+//const API_URL = 'http://localhost:5001/charger-availability/us-central1';
 function initMap() {
   let sites = []
   const map = new google.maps.Map(document.getElementById("map"), {
@@ -33,9 +33,9 @@ function initMap() {
 
   async function loadChargers() {
     let b = map.getBounds();
-    let lat = b.getNorthEast().lat();
+    let lat2 = b.getNorthEast().lat();
     let lon2 = b.getNorthEast().lng();
-    let lat2 = b.getSouthWest().lat();
+    let lat = b.getSouthWest().lat();
     let lon = b.getSouthWest().lng();
 
     console.log(`getbounds latlon (${lat.toFixed(3)}, ${lon.toFixed(3)}), latlon2 (${lat2.toFixed(3)}, ${lon2.toFixed(3)}) `);
@@ -85,7 +85,7 @@ function initMap() {
             shouldFocus: false,
           });
           let res = await getHistogram(site);
-          document.getElementById('histogram').innerHTML = buildHistogram(res);
+          document.getElementById('histogram').innerHTML = buildHistogram(res, site);
         });
       }
       if (!oldSite) {
