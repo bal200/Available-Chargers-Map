@@ -7,25 +7,27 @@ function buildHistogram(data, site) {
 		<div class="graph">`
 			for(let n=0; n<24; n++) {
 				str+=`<div class="column">`
-				if (n==nowHour) {
+				if (n==nowHour && site.busynessCcs) {
 					let busy = site.busynessCcs?.split(',');
 					if (busy[2]>0) {
 						let barHeight = busy[2] / busy[0] * 100;
 						str+=`<div class="broken now" style="height:${barHeight}%"></div>`
 					}
-					if (busy[1]>0) {
+					//if (busy[1]>0) {
 						let barHeight = busy[1] / busy[0] * 100;
+						if (barHeight===0) barHeight=1;
 						str+=`<div class="busy now" style="height:${barHeight}%"></div>`
-					}
-				}else if (data[n]) {
+					//}
+				}else if (data[n] && data[n].length) {
 					if (data[n][2]>0) {
 						let barHeight = data[n][2] / data[n][0] * 100;
 						str+=`<div class="broken" style="height:${barHeight}%"></div>`
 					}
-					if (data[n][1]>0) {
+					//if (data[n][1]>0) {
 						let barHeight = data[n][1] / data[n][0] * 100;
+						if (barHeight===0 || barHeight===NaN) barHeight=1;
 						str+=`<div class="busy" style="height:${barHeight}%"></div>`
-					}
+					//}
 				}
 				str+=`</div>`
 			}
