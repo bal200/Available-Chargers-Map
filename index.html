@@ -40,7 +40,7 @@ function initMap() {
 
     console.log(`getbounds latlon (${lat.toFixed(3)}, ${lon.toFixed(3)}), latlon2 (${lat2.toFixed(3)}, ${lon2.toFixed(3)}) `);
     results = await apiLoadChargers(lat,lon, lat2,lon2);
-    console.log("api result ", results);
+    //console.log("api result ", results);
 
     for (let site of results) {
       let found = isSiteAlreadyInCache(site)
@@ -51,9 +51,14 @@ function initMap() {
       }
       let iconUrl = "markers/chargerpin-green.png", label = "QUIET";
       let status = parseInt(site.statusCcs);
+      let s = site.busynessCcs?.split(',');
+
       if (status >= 50) {iconUrl = "markers/chargerpin-orange.png"; label="BUSY";}
       if (status > 75) {iconUrl = "markers/chargerpin-red.png"; label="QUEUING"}
-      if (site.statusCcs === undefined) {iconUrl = "markers/chargerpin-grey.png"; label="";}
+      if (site.statusCcs === undefined) {iconUrl = "markers/chargerpin-light.png"; label="";}
+      if (s && s.length && s[0]>0 && s[0]===s[2]) {
+        iconUrl = "markers/chargerpin-dark.png"; label="";
+      }
       if (oldSite) {
         /* UPDATE any marker attributes if different */
         if (oldSite.marker?.getIcon().url !== iconUrl) {
@@ -62,15 +67,16 @@ function initMap() {
             labelOrigin: new google.maps.Point(14, 47)
           });
         }
-        if (oldSite.marker?.getLabel() !== label) {
-          site.marker.setLabel(label);
-        }
+        // if (oldSite.marker?.getLabel() !== label) {
+        //   site.marker.setLabel(label);
+        // }
+        site = oldSite
       } else {
         /* CREATE new marker */
         site.marker = new google.maps.Marker({
           position: { lat: site.latitude, lng: site.longitude },
           map: map,
-          label,
+          /* label, */
           icon: {
             url: iconUrl,
             labelOrigin: new google.maps.Point(14, 47)
@@ -130,14 +136,14 @@ function initMap() {
       else if (status >= 50) str+= `<span class="pill orange">BUSY</span>`;
       else if (status >= 0) str+= `<span class="pill green"><span class="dot dark-green"></span>QUIET</span>`;
       str+= `
-    </div>`;
+    </div>
+    <div><a href="${API_URL}/getDayConnectorDump?site=${site.id}" target="_blank">log dump</a></div>`;
     return str;
   }
 }
 
 function getHistogram(site) {
-  let url = `/getHistogram?site=${site.id}&type=json`;
-  return fetch(API_URL + url, {
+  return fetch(`${API_URL}/getHistogram?site=${site.id}&type=json`, {
     // mode: 'no-cors',
 	})
 	.then(res => res.json())

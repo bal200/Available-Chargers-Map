@@ -169,13 +169,15 @@ body {
 	border-top-right-radius: 2px;
 }
 .broken {
-	background-color: rgb(89, 131, 197)  /* #8a0202; */
+	/* background-color: rgb(89, 131, 197); /* /* #8a0202; */
+	background-color: rgb(110, 110, 110);
 }
 .busy {
 	background-color:rgb(123,171,247);
 }
 .broken.now {
-	background-color: rgb(228,56,116)  /* #8a0202; */
+	/*background-color: rgb(228,56,116)*/  /* #8a0202; */
+	background-color: rgb(116, 84, 95)
 }
 .busy.now {
 	background-color:rgb(248,76,136);
