@@ -49,16 +49,22 @@ function initMap() {
         site.marker = oldSite.marker;
         sites[found] = site;
       }
-      let iconUrl = "markers/chargerpin-green.png", label = "QUIET";
       let status = parseInt(site.statusCcs);
-      let s = site.busynessCcs?.split(',');
+      let counts = getCounts(site);
+      let colour = "", size="";
 
-      if (status >= 50) {iconUrl = "markers/chargerpin-orange.png"; label="BUSY";}
-      if (status > 75) {iconUrl = "markers/chargerpin-red.png"; label="QUEUING"}
-      if (site.statusCcs === undefined) {iconUrl = "markers/chargerpin-light.png"; label="";}
-      if (s && s.length && s[0]>0 && s[0]===s[2]) {
-        iconUrl = "markers/chargerpin-dark.png"; label="";
-      }
+      if (site.statusCcs === undefined) {colour = 'light'; label="";}
+      else if (status > 75) {colour = 'red'; label="FULL"}
+      else if (status >= 50) {colour = 'orange'; label="BUSY";}
+      else if (status < 50) {colour='green'; label="QUIET";}
+      if (counts.ccs.outoforder>=1 && counts.ccs.outoforder === counts.ccs.total) {colour = 'dark'; label="";}
+
+      if (counts.ccs.total >= 8) {size = '-large'}
+      else if (counts.ccs.total >= 3) {size = ''}
+      else if (counts.ccs.total <= 2) {size = '-small'}
+
+      let iconUrl = `markers/${site.network}-${colour}${size}.png`
+
       if (oldSite) {
         /* UPDATE any marker attributes if different */
         if (oldSite.marker?.getIcon().url !== iconUrl) {
@@ -113,11 +119,15 @@ function initMap() {
   }
 
   function buildInfoContent(site) {
+    let counts = getCounts(site), i=0;
     let str = `
     <div class="row-top">
       <div class="devices">`;
-        for (device of site.devices) {
-          str += `<img src="markers/charger-black.png" class="device-icon" />`;
+        for (i=0; i<counts.ccs.total; i++){
+          str += `<img src="assets/ccs.png" class="device-icon" />`;
+        }
+        for (i=0; i<counts.type2.total; i++){
+          str += `<img src="assets/type2.png" class="device-icon" />`;
         }
         str += `
       </div>
@@ -132,7 +142,7 @@ function initMap() {
       <div class="price">--p/kwh</div>`;
       let status = parseInt(site.statusCcs);
       if (site.statusCcs===null || site.statusCcs===undefined) str+= `<span></span>`;
-      else if (status > 75) str+= `<span class="pill red">QUEUING</span>`;
+      else if (status > 75) str+= `<span class="pill red">FULL</span>`;
       else if (status >= 50) str+= `<span class="pill orange">BUSY</span>`;
       else if (status >= 0) str+= `<span class="pill green"><span class="dot dark-green"></span>QUIET</span>`;
       str+= `
@@ -173,6 +183,24 @@ function debounce(func, timeout = 300){
   };
 }
 
+function getCounts(site) {
+  const s = site.busynessCcs?.split(',') || [];
+  const s2 = site.busynessType2?.split(',') || [];
+  let ret = {};
+  return {
+    ccs: {
+      total: s[0],
+      charging: s[1],
+      outoforder: s[2],
+    },
+    type2: {
+      total: s2[0],
+      charging: s2[1],
+      outoforder: s2[2],
+    },
+  }
+}
+
 window.initMap = initMap;
 
 		</script>
@@ -182,7 +210,7 @@ window.initMap = initMap;
       <div id="fast-tab-button" class="tab selected seperator">
         <div class="tab-inner">
           <div class="tab-title">
-            <img class="tab-icon" src="markers/charger-icon.svg">
+            <img class="tab-icon" src="assets/charger-icon.svg">
             Rapid Chargers
           </div>
           <div class="tab-subtext">50kw +</div>
@@ -191,7 +219,7 @@ window.initMap = initMap;
       <div id="slow-tab-button" class="tab">
         <div class="tab-inner">
           <div class="tab-title">
-            <img class="tab-icon" src="markers/charger-icon.svg">
+            <img class="tab-icon" src="assets/charger-icon.svg">
             All Chargers
           </div>
           <div class="tab-subtext">
@@ -204,7 +232,7 @@ window.initMap = initMap;
       <div id="map"></div>
     </div>
     <script
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA1NMWf8-_BgC7MHNhfOmeGD5rlbH_zYM4&callback=initMap&v=weekly"
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA1NMWf8-_BgC7MHNhfOmeGD5rlbH_zYM4&callback=initMap&libraries=visualization&v=weekly"
       defer
     ></script>
   </body>
