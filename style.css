@@ -88,15 +88,18 @@ body {
   align-items:center;
   margin-bottom: 6px;
 }
-.devices {
+.operator-logo {
   margin-right: 5px;
+}
+.operator-logo>img {
+  width: 25px;
 }
 .device-icon {
   width: 21px;
 }
 .name {
   font-weight: 500;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 }
 
 .row-bottom {
@@ -105,7 +108,7 @@ body {
   justify-content: space-between;
   gap: 5px;
 }
-.speed {
+.devices {
   font-weight: 500;
 }
 .pill {

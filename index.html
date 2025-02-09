@@ -3,19 +3,23 @@
     <title>Available Chargers</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" type="text/css" href="./style.css" />
-    <script src="./histogram.js"></script>
+    <script src="./info-window.js"></script>
 
 		<script>
 const API_URL = 'https://europe-west2-charger-availability.cloudfunctions.net/api';
 //const API_URL = 'http://localhost:5001/charger-availability/europe-west2';
 //const API_URL = 'http://localhost:8080';
+
+let map, infowindow;
+let sites = [];
+
 function initMap() {
-  let sites = []
-  const map = new google.maps.Map(document.getElementById("map"), {
+
+  map = new google.maps.Map(document.getElementById("map"), {
     zoom: 10,
     center: { lat: 53.300, lng: -2.402 },
   });
-  const infowindow = new google.maps.InfoWindow({
+  infowindow = new google.maps.InfoWindow({
     content: '',
   });
 
@@ -91,14 +95,7 @@ function initMap() {
         });
         site.marker.addListener("click", async () => {
           console.log(site.name+" clicked");
-          infowindow.setContent(buildInfoContent(site));
-          infowindow.open({
-            anchor: site.marker,
-            map,
-            shouldFocus: false,
-          });
-          let res = await getHistogram(site);
-          document.getElementById('histogram').innerHTML = buildHistogram(res, site);
+          openInfoWindow(site, counts)
         });
       }
       if (!oldSite) {
@@ -106,6 +103,7 @@ function initMap() {
       }
     }
   }
+
   const loadChargersDebounced = debounce(() => loadChargers(), 500);
 
   function apiLoadChargers(lat,lon, lat2,lon2) {
@@ -118,50 +116,6 @@ function initMap() {
   function isSiteAlreadyInCache(site) {
     return sites.findIndex(s => s.id === site.id)
   }
-
-  function buildInfoContent(site) {
-    let counts = getCounts(site), i=0;
-    let str = `
-    <div class="row-top">
-      <div class="devices">`;
-        for (i=0; i<counts.ccs.total; i++){
-          str += `<img src="assets/ccs.png" class="device-icon" />`;
-        }
-        for (i=0; i<counts.type2.total; i++){
-          str += `<img src="assets/type2.png" class="device-icon" />`;
-        }
-        str += `
-      </div>
-      <div>
-        <div class="name">${site.name}</div>
-        <div class="network">${site.operatorName}</div>
-      </div>
-    </div>
-    <div id="histogram"></div>
-    <div class="row-bottom">
-      <div class="speed">--kw x2</div>
-      <div class="price">--p/kwh</div>`;
-      let status = parseInt(site.statusCcs);
-      if (site.statusCcs===null || site.statusCcs===undefined) str+= `<span></span>`;
-      else if (status > 75) str+= `<span class="pill red">FULL</span>`;
-      else if (status >= 50) str+= `<span class="pill orange">BUSY</span>`;
-      else if (status >= 0) str+= `<span class="pill green"><span class="dot dark-green"></span>QUIET</span>`;
-      str+= `
-    </div>
-
-    `;
-    return str;
-  }
-}
-
-function getHistogram(site) {
-  return fetch(`${API_URL}/histogram?site=${site.id}&type=json`, {
-    // mode: 'no-cors',
-	})
-	.then(res => res.json())
-  .catch(error => {
-    console.log("getHistogram ERROR: ", error)
-  });
 }
 
 function fastTabButtonClick() {
@@ -188,7 +142,6 @@ function debounce(func, timeout = 300){
 function getCounts(site) {
   const s = site.busynessCcs?.split(',') || [];
   const s2 = site.busynessType2?.split(',') || [];
-  let ret = {};
   return {
     ccs: {
       total: s[0],
