@@ -6,8 +6,9 @@
     <script src="./histogram.js"></script>
 
 		<script>
-const API_URL = 'https://europe-west2-charger-availability.cloudfunctions.net';
+const API_URL = 'https://europe-west2-charger-availability.cloudfunctions.net/api';
 //const API_URL = 'http://localhost:5001/charger-availability/europe-west2';
+//const API_URL = 'http://localhost:8080';
 function initMap() {
   let sites = []
   const map = new google.maps.Map(document.getElementById("map"), {
@@ -63,7 +64,7 @@ function initMap() {
       else if (counts.ccs.total >= 3) {size = ''}
       else if (counts.ccs.total <= 2) {size = '-small'}
 
-      let iconUrl = `markers/${site.network}-${colour}${size}.png`
+      let iconUrl = `markers/${site.party_id}-${colour}${size}.png`
 
       if (oldSite) {
         /* UPDATE any marker attributes if different */
@@ -108,7 +109,7 @@ function initMap() {
   const loadChargersDebounced = debounce(() => loadChargers(), 500);
 
   function apiLoadChargers(lat,lon, lat2,lon2) {
-    let url = `/getSites?lat=${lat}&lon=${lon}&lat2=${lat2}&lon2=${lon2}`;
+    let url = `/sites?lat=${lat}&lng=${lon}&lat2=${lat2}&lng2=${lon2}`;
     return fetch(API_URL + url, {
 		  //headers: { 'X-Api-Key': API_KEY },
 	  })
@@ -133,7 +134,7 @@ function initMap() {
       </div>
       <div>
         <div class="name">${site.name}</div>
-        <div class="network">${site.network}</div>
+        <div class="network">${site.operatorName}</div>
       </div>
     </div>
     <div id="histogram"></div>
@@ -147,13 +148,14 @@ function initMap() {
       else if (status >= 0) str+= `<span class="pill green"><span class="dot dark-green"></span>QUIET</span>`;
       str+= `
     </div>
-    <div><a href="${API_URL}/getDayConnectorDump?site=${site.id}" target="_blank">log dump</a></div>`;
+
+    `;
     return str;
   }
 }
 
 function getHistogram(site) {
-  return fetch(`${API_URL}/getHistogram?site=${site.id}&type=json`, {
+  return fetch(`${API_URL}/histogram?site=${site.id}&type=json`, {
     // mode: 'no-cors',
 	})
 	.then(res => res.json())
