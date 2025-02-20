@@ -1,3 +1,6 @@
+import { getCounts } from "./helpers.ts";
+import { API_URL } from "./main.ts";
+
 const SITE_LOG_URL = 'http://localhost:8082/siteLogDump'
 
 let infoState = {
@@ -6,7 +9,11 @@ let infoState = {
 	date: undefined,
 }
 
-function openInfoWindow(site, counts) {
+export let infowindow: google.maps.InfoWindow;
+
+export async function openInfoWindow(site, counts, map) {
+	const { InfoWindow } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
+	if (!infowindow) infowindow = new InfoWindow({ content: '' });
 	console.log(site.name+" clicked");
 	infowindow.setContent( buildInfoContent(site) );
 	infowindow.open({
@@ -17,7 +24,7 @@ function openInfoWindow(site, counts) {
 
 	let plug = (counts.ccs?.total>0 ? 'ccs' : 'type2'); /** TODO: */
 	infoState = {site, plug, date: new Date()}
-	drawHistogram()
+	//drawHistogram()
 }
 
 function buildInfoContent(site) {
@@ -116,7 +123,7 @@ function buildHistogram(data, nowHour, nowBusyness) {
 					}
 					//if (data[n][1]>0) {
 						let barHeight = data[n][1] / data[n][0] * 100;
-						if (barHeight===0 || barHeight===NaN) barHeight=1;
+						if (barHeight===0 || Number.isNaN(barHeight)) barHeight=1;
 						str+=`<div class="busy" style="height:${barHeight}%"></div>`
 					//}
 				}
