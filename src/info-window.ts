@@ -3,7 +3,7 @@ import { API_URL } from "./main.ts";
 
 const SITE_LOG_URL = 'http://localhost:8082/siteLogDump'
 
-let infoState = {
+let infoState: {site?: any, plug?: string, date?: Date} = {
 	site: undefined,
 	plug: undefined,
 	date: undefined,
@@ -24,15 +24,26 @@ export async function openInfoWindow(site, counts, map) {
 
 	let plug = (counts.ccs?.total>0 ? 'ccs' : 'type2'); /** TODO: */
 	infoState = {site, plug, date: new Date()}
-	//drawHistogram()
+	setTimeout(()=> {
+		let datePrev = document.getElementById("date-prev") as HTMLButtonElement
+		let dateNext = document.getElementById("date-next") as HTMLButtonElement
+		let histCcs = document.getElementById("hist-ccs") as HTMLButtonElement
+		let histType2 = document.getElementById("hist-type2") as HTMLButtonElement
+		if (datePrev) datePrev.addEventListener('click', () => drawHistogram( -1 ));
+		if (dateNext) dateNext.addEventListener('click', () => drawHistogram( +1 ));
+		if (histCcs) histCcs.addEventListener('click', () => drawHistogram( 0, 'ccs' ));
+		if (histType2) histType2.addEventListener('click', () => drawHistogram( 0, 'type2' ));
+	},20)
+
+	drawHistogram()
 }
 
 function buildInfoContent(site) {
 	let counts = getCounts(site), i=0;
 	let str = `
-	<div class="row-top">
+	<div id="info-window" class="row-top">
 		<div class="operator-logo">
-			<img src="assets/operator-logo/${site.party_id}.png" />
+			<img src="img/operator-logo/${site.party_id}.png" />
 		</div>
 		<div>
 			<div class="name">${site.name}</div>
@@ -43,10 +54,10 @@ function buildInfoContent(site) {
 	<div class="row-bottom">
 		<div class="devices">`
 			for (i=0; i<counts.ccs.total; i++){
-				str += `<img src="assets/ccs.png" class="device-icon" />`;
+				str += `<img src="img/ccs.png" class="device-icon" />`;
 			}
 			for (i=0; i<counts.type2.total; i++){
-				str += `<img src="assets/type2.png" class="device-icon" />`;
+				str += `<img src="img/type2.png" class="device-icon" />`;
 			}
 			str+=`
 		</div>
@@ -59,17 +70,17 @@ function buildInfoContent(site) {
 		str+= `
 	</div>
 	<div class="second-row-bottom">`
-		if (counts.ccs?.total>0) str+=`<button id="hist-ccs" onclick="drawHistogram('ccs')">CCS</button>&nbsp;`
-		if (counts.type2?.total>0) str+=`<button id="hist-type2" onclick="drawHistogram('type2')">Type 2</button>&nbsp;`
-		str+=`<button id="date-prev" onclick="drawHistogram(undefined, -1)"> <<< </button>&nbsp;`
-		str+=`<button id="date-next" onclick="drawHistogram(undefined, +1)"> >>> </button>&nbsp;`
+		if (counts.ccs?.total>0) str+=`<button id="hist-ccs">CCS</button>&nbsp;`
+		if (counts.type2?.total>0) str+=`<button id="hist-type2">Type 2</button>&nbsp;`
+		str+=`<button id="date-prev"> <<< </button>&nbsp;`
+		str+=`<button id="date-next"> >>> </button>&nbsp;`
 		str+=`<a href="${SITE_LOG_URL}?site=${site.id}" target="_blank">log dump</a>
 	</div>
 	`;
 	return str;
 }
 
-async function drawHistogram(plug, dateShift, site) {
+async function drawHistogram(dateShift?:number, plug?:string, site?:object) {
 	if (dateShift === -1) infoState.date = minusDay(infoState.date);
 	if (dateShift === +1) infoState.date = plusDay(infoState.date);
 	if (plug) infoState.plug = plug;

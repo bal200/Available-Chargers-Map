@@ -9,7 +9,9 @@ body {
   height: 100%;
   width: 100%;
 }
-
+.map-wrap {
+  height: 100%;
+}
 /* top tabs */
 .top-tabs-panel {
   position: absolute;
