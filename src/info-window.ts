@@ -1,17 +1,13 @@
 import { getCounts } from "./helpers.ts";
-import { API_URL } from "./main.ts";
+import { drawHistogram } from "./histogram.ts";
+import { Site } from "./services.ts";
 
 const SITE_LOG_URL = 'http://localhost:8082/siteLogDump'
 
-let infoState: {site?: any, plug?: string, date?: Date} = {
-	site: undefined,
-	plug: undefined,
-	date: undefined,
-}
 
 export let infowindow: google.maps.InfoWindow;
 
-export async function openInfoWindow(site, counts, map) {
+export async function openInfoWindow(site: Site, map: google.maps.Map) {
 	const { InfoWindow } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
 	if (!infowindow) infowindow = new InfoWindow({ content: '' });
 	console.log(site.name+" clicked");
@@ -21,21 +17,16 @@ export async function openInfoWindow(site, counts, map) {
 		map,
 		shouldFocus: false,
 	});
-
+	let counts = getCounts(site)
 	let plug = (counts.ccs?.total>0 ? 'ccs' : 'type2'); /** TODO: */
-	infoState = {site, plug, date: new Date()}
 	setTimeout(()=> {
-		let datePrev = document.getElementById("date-prev") as HTMLButtonElement
-		let dateNext = document.getElementById("date-next") as HTMLButtonElement
-		let histCcs = document.getElementById("hist-ccs") as HTMLButtonElement
-		let histType2 = document.getElementById("hist-type2") as HTMLButtonElement
-		if (datePrev) datePrev.addEventListener('click', () => drawHistogram( -1 ));
-		if (dateNext) dateNext.addEventListener('click', () => drawHistogram( +1 ));
-		if (histCcs) histCcs.addEventListener('click', () => drawHistogram( 0, 'ccs' ));
-		if (histType2) histType2.addEventListener('click', () => drawHistogram( 0, 'type2' ));
+		document.getElementById("date-prev")?.addEventListener('click', () => drawHistogram({ dateShift: -1 }));
+		document.getElementById("date-next")?.addEventListener('click', () => drawHistogram({ dateShift: +1 }));
+		document.getElementById("hist-ccs")?.addEventListener('click', () => drawHistogram({ plug: 'ccs' }));
+		document.getElementById("hist-type2")?.addEventListener('click', () => drawHistogram({ plug: 'type2' }));
 	},20)
 
-	drawHistogram()
+	drawHistogram({site, plug, date: new Date()})
 }
 
 function buildInfoContent(site) {
@@ -78,118 +69,4 @@ function buildInfoContent(site) {
 	</div>
 	`;
 	return str;
-}
-
-async function drawHistogram(dateShift?:number, plug?:string, site?:object) {
-	if (dateShift === -1) infoState.date = minusDay(infoState.date);
-	if (dateShift === +1) infoState.date = plusDay(infoState.date);
-	if (plug) infoState.plug = plug;
-	if (site) infoState.site = site;
-	console.log("updateHostogram called ", infoState)
-
-	let res = await getHistogram(infoState.site, infoState.plug, infoState.date.toISOString());
-	let nowHour, nowBusyness;
-	if (isToday(infoState.date)) {
-		nowHour = new Date().getUTCHours()
-		nowBusyness = (infoState.plug==='ccs' ? infoState.site.busynessCcs : infoState.site.busynessType2);
-	}
-	document.getElementById('histogram').innerHTML = buildHistogram(res, nowHour, nowBusyness);
-
-}
-
-function getHistogram(site, plug, date) {
-	let params = new URLSearchParams({ 'site': site.id, plug, date })
-	return fetch(`${API_URL}/histogram?`+params.toString(), {
-		// mode: 'no-cors',
-	})
-	.then(res => res.json())
-	.catch(error => {
-		console.log("getHistogram ERROR: ", error)
-	});
-}
-
-
-function buildHistogram(data, nowHour, nowBusyness) {
-	let str = `
-	<div class="outer">
-	  <div class="axis-line"></div>
-		<div class="graph">`
-			for(let n=0; n<24; n++) {
-				str+=`<div class="column">`
-				if (n==nowHour && nowBusyness!==undefined) {
-					let busy = nowBusyness?.split(',');
-					if (busy[2]>0) {
-						let barHeight = busy[2] / busy[0] * 100;
-						str+=`<div class="broken now" style="height:${barHeight}%"></div>`
-					}
-					//if (busy[1]>0) {
-						let barHeight = busy[1] / busy[0] * 100;
-						if (barHeight===0) barHeight=1;
-						str+=`<div class="busy now" style="height:${barHeight}%"></div>`
-					//}
-				}else if (data[n] && data[n].length) {
-					if (data[n][2]>0) {
-						let barHeight = data[n][2] / data[n][0] * 100;
-						str+=`<div class="broken" style="height:${barHeight}%"></div>`
-					}
-					//if (data[n][1]>0) {
-						let barHeight = data[n][1] / data[n][0] * 100;
-						if (barHeight===0 || Number.isNaN(barHeight)) barHeight=1;
-						str+=`<div class="busy" style="height:${barHeight}%"></div>`
-					//}
-				}
-				str+=`</div>`
-			}
-			str+= `
-		</div>
-		<div class="axis-line"></div>
-		<div class="axis">
-			<div class="mark large"></div> <!-- 00:00 -->
-			<div class="mark"></div>
-			<div class="mark"></div>
-			<div class="mark large"><div class="label">3am</div></div>
-			<div class="mark"></div>
-			<div class="mark"></div>
-			<div class="mark large"><div class="label">6am</div></div> 
-			<div class="mark"></div>
-			<div class="mark"></div>
-			<div class="mark large"><div class="label">9am</div></div>
-			<div class="mark"></div>
-			<div class="mark"></div>
-			<div class="mark large"><div class="label">12pm</div></div>
-			<div class="mark"></div>
-			<div class="mark"></div>
-			<div class="mark large"><div class="label">3pm</div></div>
-			<div class="mark"></div>
-			<div class="mark"></div>
-			<div class="mark large"><div class="label">6pm</div></div>
-			<div class="mark"></div>
-			<div class="mark"></div>
-			<div class="mark large"><div class="label">9pm</div></div>
-			<div class="mark"></div>
-			<div class="mark"></div>
-		</div>
-	</div>
-	`
-	return str;
-}
-
-
-function minusDay(d) {
-	let d2 = new Date(d)
-	d2.setUTCDate(d2.getUTCDate()-1)
-	return d2
-}
-function plusDay(d) {
-	let d2 = new Date(d)
-	d2.setUTCDate(d2.getUTCDate()+1)
-	return d2
-}
-function isToday(d) {
-	let today = new Date()
-	if (d.getFullYear() === today.getFullYear()
-	  && d.getMonth() === today.getMonth()
-	  && d.getDate() === today.getDate()
-	) return true;
-	else return false;
 }

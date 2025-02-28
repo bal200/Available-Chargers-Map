@@ -84,7 +84,7 @@ body {
   font-size: 65%;
 }
 
-/* info window */
+/************** info window **********************/
 .row-top {
   display: flex;
   align-items:center;
@@ -231,3 +231,63 @@ body {
   100% {
     background-position: 0 -300%; } 
 }
+
+/********************** Marker ************************/
+
+.marker {
+  background-color: #0cde5b;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-size: 14px;
+  padding: 2px 15px;
+  position: relative;
+}
+.marker::after, .list-marker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, 0);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid #207868;
+}
+
+
+.list-marker {
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-size: 14px;
+  /* padding: 2px 1px; */
+  position: relative;
+  /* overflow: hidden; */
+}
+.list-marker .line {
+  /* background-color: #0cde5b; */
+  padding: 1px 1px;
+  height: 22px;
+}
+.list-marker .line.first {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+.list-marker .line.last {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.list-marker .line>img {
+  width: 22px;
+  height: 22px;
+  margin-right: 2px;
+}
+.list-marker .line>div {
+  display: inline-block;
+  line-height: 22px;
+  vertical-align: top;
+}
+
+
+

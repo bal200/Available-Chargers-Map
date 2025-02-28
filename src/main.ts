@@ -1,22 +1,21 @@
+import { MarkerClusterer, Renderer } from "@googlemaps/markerclusterer";
 import { debounce, getCounts } from "./helpers.js";
 import { openInfoWindow } from "./info-window.js"
-
-export const API_URL = 'https://europe-west2-charger-availability.cloudfunctions.net/api';
-//const API_URL = 'http://localhost:5001/charger-availability/europe-west2';
-//export const API_URL = 'http://localhost:8080';
-
+import { apiLoadChargers, Site } from "./services.js";
 
 let map: google.maps.Map;
-let sites = [];
-
+let sites: Site[] = [];
+let markers: google.maps.marker.AdvancedMarkerElement[]=[];
+let markerCluster: MarkerClusterer;
+let chargerType = 'ccs'
 
 async function initMap(): Promise<void> {
   const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
-  const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
 
   map = new Map(document.getElementById("map") as HTMLElement, {
     zoom: 10,
     center: { lat: 53.300, lng: -2.402 },
+    mapId: 'available_chargers',
   });
 
   map.addListener("bounds_changed", (e) => { 
@@ -31,6 +30,7 @@ async function initMap(): Promise<void> {
     //console.log("zoom_changed ", e) 
     loadChargersDebounced();
   });
+
 }
 
 initMap()
@@ -43,8 +43,7 @@ async function loadChargers() {
   let lon = b.getSouthWest().lng();
 
   console.log(`getbounds latlon (${lat.toFixed(3)}, ${lon.toFixed(3)}), latlon2 (${lat2.toFixed(3)}, ${lon2.toFixed(3)}) `);
-  let results = await apiLoadChargers(lat,lon, lat2,lon2);
-  //console.log("api result ", results);
+  let results = await apiLoadChargers(lat,lon, lat2,lon2, chargerType);
 
   for (let site of results) {
     let found = isSiteAlreadyInCache(site)
@@ -53,66 +52,133 @@ async function loadChargers() {
       site.marker = oldSite.marker;
       sites[found] = site;
     }
-    let status = parseInt(site.statusCcs);
-    let counts = getCounts(site);
-    let colour = "", size="", label;
-
-    if (site.statusCcs === undefined) {colour = 'light'; label="";}
-    else if (status > 75) {colour = 'red'; label="FULL"}
-    else if (status >= 50) {colour = 'orange'; label="BUSY";}
-    else if (status < 50) {colour='green'; label="QUIET";}
-    if (counts.ccs.outoforder>=1 && counts.ccs.outoforder === counts.ccs.total) {colour = 'dark'; label="";}
-
-    if (counts.ccs.total >= 8) {size = '-large'}
-    else if (counts.ccs.total >= 3) {size = ''}
-    else if (counts.ccs.total <= 2) {size = '-small'}
-
-    let iconUrl = `markers/${site.party_id}-${colour}${size}.png`
-
+  
     if (oldSite) {
       /* UPDATE any marker attributes if different */
-      if (oldSite.marker?.getIcon().url !== iconUrl) {
-        site.marker.setIcon({
-          url: iconUrl,
-          labelOrigin: new google.maps.Point(14, 47)
-        });
-      }
-      // if (oldSite.marker?.getLabel() !== label) {
-      //   site.marker.setLabel(label);
-      // }
-      site = oldSite
+      await updateMarker(site, oldSite) /** @TODO: implement this */
     } else {
       /* CREATE new marker */
-      site.marker = new google.maps.Marker({
-        position: { lat: site.latitude, lng: site.longitude },
-        map: map,
-        /* label, */
-        icon: {
-          url: iconUrl,
-          labelOrigin: new google.maps.Point(14, 47)
-        },
-      });
-      site.marker.addListener("click", async () => {
-        console.log(site.name+" clicked");
-        openInfoWindow(site, counts, map)
-      });
+      await createMarker(site)
     }
     if (!oldSite) {
-      sites.push(site);
+      sites.push(site)
+      markers.push(site.marker)
     }
+  }
+
+  let renderer: Renderer = {
+    render: (cluster, stats, map) => {
+      const content = document.createElement('div');
+      content.className = 'price-tag';
+      content.textContent = String(cluster.markers.length);
+      return new AdvancedMarkerElement({
+        map,
+        position: cluster.position,
+        content,
+      });
+    }
+  }
+
+  markerCluster = new MarkerClusterer({ markers, map, renderer: clusterRenderer });
+  
+}
+
+const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
+
+let clusterRenderer: Renderer = {
+  render: (cluster, stats, map) => {
+    const listMarker = document.createElement('div')
+    listMarker.className = 'list-marker'
+    cluster.markers?.forEach((marker, i, arr) => {
+      const site = (marker as any).site as Site;
+      let { colour } = colourForSite(site)
+      const line = document.createElement('div')
+      
+      line.className = 'line'+ (i===0 ? ' first':'') + (i === arr.length-1 ? ' last':'')
+      line.style.backgroundColor = colour
+
+      const img = document.createElement('img') as HTMLImageElement;
+      img.src = `pins/operator-${site.party_id}.png`
+      line.append(img)
+
+      const span = document.createElement('div') as HTMLSpanElement;
+      span.textContent = "79p"
+      line.append(span)
+
+      listMarker.append(line)
+    })
+
+    return new AdvancedMarkerElement({
+      map,
+      position: cluster.position,
+      content: listMarker,
+    });
   }
 }
 
+async function createMarker(site: Site) {
+  //const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
+  let {colour, border, size} = colourForSite(site)
+
+  const glyphImg = document.createElement('img');
+  glyphImg.src = `pins/operator-${site.party_id}.png`;
+
+  const pin = new PinElement({
+    background: colour,
+    borderColor: border || colour,
+    scale: size,
+    glyph: glyphImg,
+  });
+  site.marker = new AdvancedMarkerElement({
+    map: map,
+    position: { lat: site.latitude, lng: site.longitude },
+    content: pin.element,
+  });
+  /* @ts-ignore */ 
+  site.marker.site = site;
+
+  site.marker.addListener("click", async () => {
+    console.log(site.name+" clicked");
+    openInfoWindow(site, map)
+  });
+}
+
+async function updateMarker(site: Site, oldSite: Site) {
+        // if (oldSite.marker?.getIcon().url !== iconUrl) {
+      //   site.marker.setIcon({
+      //     url: iconUrl,
+      //     labelOrigin: new google.maps.Point(14, 47)
+      //   });
+      // }
+      // if (oldSite.marker?.getLabel() !== label) {
+      //   site.marker.setLabel(label);
+      // }
+      //site = oldSite
+}
+
+function colourForSite(site: Site) {
+  let status = parseInt(site.statusCcs || site.statusType2);  /** @TODO: pick ccs or type2 correctly */
+  let counts = getCounts(site);
+  let useCounts = (site.statusCcs ? counts.ccs : counts.type2)
+  let colour = "", border='', size=1;
+
+  if ((site.statusCcs || site.statusType2) === undefined) {colour = '#CCC'; border='#AAA'}
+  else if (status > 75) {colour = '#d33d5b'}
+  else if (status >= 50) {colour = '#F5C125'}
+  else if (status < 50) {colour='#207868'}
+  if (useCounts.outoforder>=1 && useCounts.outoforder === useCounts.total) {colour = '#666'}
+
+  if (useCounts.total >= 8) {size = 1.175}
+  else if (useCounts.total >= 3) {size = 1}
+  else if (useCounts.total <= 2) {size = 0.75}
+
+  return { colour, border, size }
+}
+
+
 const loadChargersDebounced = debounce(() => loadChargers(), 500);
 
-function apiLoadChargers(lat,lon, lat2,lon2) {
-  let url = `/sites?lat=${lat}&lng=${lon}&lat2=${lat2}&lng2=${lon2}`;
-  return fetch(API_URL + url, {
-    //headers: { 'X-Api-Key': API_KEY },
-  })
-  .then(res => res.json())
-}
-function isSiteAlreadyInCache(site) {
+function isSiteAlreadyInCache(site: Site) {
   return sites.findIndex(s => s.id === site.id)
 }
 
@@ -120,10 +186,12 @@ function isSiteAlreadyInCache(site) {
 function fastTabButtonClick() {
   document.getElementById("fast-tab-button").classList.add("selected");
   document.getElementById("slow-tab-button").classList.remove("selected");
+  chargerType = 'ccs'
 }
 function slowTabButtonClick() {
   document.getElementById("fast-tab-button").classList.remove("selected");
   document.getElementById("slow-tab-button").classList.add("selected");
+  chargerType = 'any'
 }
 window.onload = function() {
   document.getElementById("fast-tab-button").addEventListener("click", fastTabButtonClick);
