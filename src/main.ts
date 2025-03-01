@@ -44,6 +44,10 @@ async function loadChargers() {
 
   console.log(`getbounds latlon (${lat.toFixed(3)}, ${lon.toFixed(3)}), latlon2 (${lat2.toFixed(3)}, ${lon2.toFixed(3)}) `);
   let results = await apiLoadChargers(lat,lon, lat2,lon2, chargerType);
+  
+  if (!markerCluster) {
+    markerCluster = new MarkerClusterer({ map, renderer: clusterRenderer, onClusterClick });
+  }
 
   for (let site of results) {
     let found = isSiteAlreadyInCache(site)
@@ -58,71 +62,25 @@ async function loadChargers() {
       await updateMarker(site, oldSite) /** @TODO: implement this */
     } else {
       /* CREATE new marker */
-      await createMarker(site)
+      await createMarker(site, markerCluster)
     }
     if (!oldSite) {
       sites.push(site)
       markers.push(site.marker)
     }
   }
-
-  let renderer: Renderer = {
-    render: (cluster, stats, map) => {
-      const content = document.createElement('div');
-      content.className = 'price-tag';
-      content.textContent = String(cluster.markers.length);
-      return new AdvancedMarkerElement({
-        map,
-        position: cluster.position,
-        content,
-      });
-    }
-  }
-
-  markerCluster = new MarkerClusterer({ markers, map, renderer: clusterRenderer });
-  
 }
 
 const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
 
-let clusterRenderer: Renderer = {
-  render: (cluster, stats, map) => {
-    const listMarker = document.createElement('div')
-    listMarker.className = 'list-marker'
-    cluster.markers?.forEach((marker, i, arr) => {
-      const site = (marker as any).site as Site;
-      let { colour } = colourForSite(site)
-      const line = document.createElement('div')
-      
-      line.className = 'line'+ (i===0 ? ' first':'') + (i === arr.length-1 ? ' last':'')
-      line.style.backgroundColor = colour
-
-      const img = document.createElement('img') as HTMLImageElement;
-      img.src = `pins/operator-${site.party_id}.png`
-      line.append(img)
-
-      const span = document.createElement('div') as HTMLSpanElement;
-      span.textContent = "79p"
-      line.append(span)
-
-      listMarker.append(line)
-    })
-
-    return new AdvancedMarkerElement({
-      map,
-      position: cluster.position,
-      content: listMarker,
-    });
-  }
-}
-
-async function createMarker(site: Site) {
+async function createMarker(site: Site, markerCluster: MarkerClusterer) {
   //const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
   let {colour, border, size} = colourForSite(site)
 
   const glyphImg = document.createElement('img');
   glyphImg.src = `pins/operator-${site.party_id}.png`;
-
+  if (size===0.75) glyphImg.width=16;
+  
   const pin = new PinElement({
     background: colour,
     borderColor: border || colour,
@@ -136,11 +94,13 @@ async function createMarker(site: Site) {
   });
   /* @ts-ignore */ 
   site.marker.site = site;
+  markerCluster.addMarker(site.marker)
 
   site.marker.addListener("click", async () => {
     console.log(site.name+" clicked");
     openInfoWindow(site, map)
   });
+
 }
 
 async function updateMarker(site: Site, oldSite: Site) {
@@ -154,6 +114,53 @@ async function updateMarker(site: Site, oldSite: Site) {
       //   site.marker.setLabel(label);
       // }
       //site = oldSite
+}
+
+let clusterRenderer: Renderer = {
+  render: (cluster, stats, map) => {
+    const MAX = 3
+    const listMarker = document.createElement('div')
+    listMarker.className = 'list-marker'
+    for (let i=0; i < cluster.markers.length && i < MAX; i++) {
+      const site = (cluster.markers[i] as any).site as Site;
+      let { colour } = colourForSite(site)
+      const line = document.createElement('div')
+      line.className = 'line'+ (i===0 ? ' first':'') + (i === cluster.markers.length-1 ? ' last':'')
+      line.style.backgroundColor = colour
+
+      const img = document.createElement('img') as HTMLImageElement;
+      img.src = `pins/operator-${site.party_id}.png`
+      line.append(img)
+
+      const span = document.createElement('div') as HTMLDivElement;
+      span.textContent = "79p"
+      line.append(span)
+
+      listMarker.append(line)
+    }
+    if (cluster.markers.length > MAX) {
+      const line = document.createElement('div')
+      line.className = 'line-footer last'
+      line.style.backgroundColor = '#777'
+
+      const span = document.createElement('div') as HTMLDivElement;
+      span.textContent = `+${cluster.markers.length - MAX}`
+      line.append(span)
+      listMarker.append(line)
+    }
+
+    return new AdvancedMarkerElement({
+      map,
+      position: cluster.position,
+      content: listMarker,
+    });
+  }
+}
+
+async function onClusterClick(event, cluster, map) {
+  const site = (cluster.markers[0] as any).site
+  console.log("Cluster clicked. first site is "+site.name+"");
+  await openInfoWindow(site, map)
 }
 
 function colourForSite(site: Site) {
@@ -175,6 +182,14 @@ function colourForSite(site: Site) {
   return { colour, border, size }
 }
 
+function resetMarkers() {
+  for (let marker of markers) {
+    marker.map = undefined
+  }
+  markerCluster.clearMarkers()
+  sites = []
+  markers = []
+}
 
 const loadChargersDebounced = debounce(() => loadChargers(), 500);
 
@@ -187,11 +202,15 @@ function fastTabButtonClick() {
   document.getElementById("fast-tab-button").classList.add("selected");
   document.getElementById("slow-tab-button").classList.remove("selected");
   chargerType = 'ccs'
+  resetMarkers()
+  loadChargers()
 }
 function slowTabButtonClick() {
   document.getElementById("fast-tab-button").classList.remove("selected");
   document.getElementById("slow-tab-button").classList.add("selected");
   chargerType = 'any'
+  resetMarkers()
+  loadChargers()
 }
 window.onload = function() {
   document.getElementById("fast-tab-button").addEventListener("click", fastTabButtonClick);
