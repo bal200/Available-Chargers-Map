@@ -1,4 +1,4 @@
-import { BusynessString, getHistogram, HistogramData, Site } from "./services.ts";
+import { BusynessString, getHistogram, HistogramData, Site, splitBusynessString } from "./services.ts";
 
 export const TOTAL = 0, IN_USE = 1, BROKEN = 2;
 
@@ -30,7 +30,7 @@ function buildHistogram(data: HistogramData, nowHour: number, nowBusyness:Busyne
 			for(let n=0; n<24; n++) {
 				str+=`<div class="column">`
 				if (n==nowHour && nowBusyness!==undefined) {
-					let busy = nowBusyness?.split(',');
+					let busy = splitBusynessString(nowBusyness)
 					if (busy[BROKEN]>0) {
 						let barHeight = busy[BROKEN] / busy[TOTAL] * 100;
 						str+=`<div class="broken now" style="height:${barHeight}%"></div>`

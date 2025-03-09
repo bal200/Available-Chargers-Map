@@ -62,5 +62,4 @@ node_modules/
 
 # my own
 research/
-
-dist/
+test/

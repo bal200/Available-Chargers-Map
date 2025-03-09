@@ -1,6 +1,6 @@
-//export const API_URL = 'https://europe-west2-charger-availability.cloudfunctions.net/api';
+export const API_URL = 'https://europe-west2-charger-availability.cloudfunctions.net/api';
 //const API_URL = 'http://localhost:5001/charger-availability/europe-west2';
-export const API_URL = 'http://localhost:8083';
+//export const API_URL = 'http://localhost:8083';
 
 
 
@@ -22,6 +22,10 @@ export async function getHistogram(site: Site, plug: string, date:IsoDate) {
 	}
 }
 
+export function splitBusynessString(str: BusynessString) {
+	let arr = str?.split(',')
+	return arr.map(elem => Number.parseFloat(elem))
+}
 
 export type Site = {
 	/** Eg. GB-SSM-612345 */
@@ -64,7 +68,7 @@ export type OcpiPlugType = "IEC_62196_T2" | "IEC_62196_T2_COMBO" | "CHADEMO"
 export type BusynessString = string
 
 
-export type HistogramData = string[][]
+export type HistogramData = number[][]
 
 /** Eg. "2025-01-13T18:21:25Z" */
 export type IsoDate = string 

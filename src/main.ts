@@ -3,6 +3,8 @@ import { debounce, getCounts } from "./helpers.js";
 import { openInfoWindow } from "./info-window.js"
 import { apiLoadChargers, Site } from "./services.js";
 
+let MarkerLibrary: google.maps.MarkerLibrary
+
 let map: google.maps.Map;
 let sites: Site[] = [];
 let markers: google.maps.marker.AdvancedMarkerElement[]=[];
@@ -11,6 +13,7 @@ let chargerType = 'ccs'
 
 async function initMap(): Promise<void> {
   const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
+  MarkerLibrary = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
 
   map = new Map(document.getElementById("map") as HTMLElement, {
     zoom: 10,
@@ -71,23 +74,20 @@ async function loadChargers() {
   }
 }
 
-const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
-
 async function createMarker(site: Site, markerCluster: MarkerClusterer) {
-  //const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
   let {colour, border, size} = colourForSite(site)
 
   const glyphImg = document.createElement('img');
   glyphImg.src = `pins/operator-${site.party_id}.png`;
   if (size===0.75) glyphImg.width=16;
   
-  const pin = new PinElement({
+  const pin = new MarkerLibrary.PinElement({
     background: colour,
     borderColor: border || colour,
     scale: size,
     glyph: glyphImg,
   });
-  site.marker = new AdvancedMarkerElement({
+  site.marker = new MarkerLibrary.AdvancedMarkerElement({
     map: map,
     position: { lat: site.latitude, lng: site.longitude },
     content: pin.element,
@@ -149,7 +149,7 @@ let clusterRenderer: Renderer = {
       listMarker.append(line)
     }
 
-    return new AdvancedMarkerElement({
+    return new MarkerLibrary.AdvancedMarkerElement({
       map,
       position: cluster.position,
       content: listMarker,
