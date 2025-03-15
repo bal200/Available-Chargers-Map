@@ -22,14 +22,15 @@ export async function drawHistogram({dateShift, plug, site, date} : {dateShift?:
 
 }
 
-function buildHistogram(data: HistogramData, nowHour: number, nowBusyness:BusynessString) {
+export function buildHistogram(data?: HistogramData, nowHour?: number, nowBusyness?:BusynessString) {
 	let str = `
 	<div class="outer">
 	  <div class="axis-line"></div>
 		<div class="graph">`
 			for(let n=0; n<24; n++) {
 				str+=`<div class="column">`
-				if (n==nowHour && nowBusyness!==undefined) {
+				if (!data) {}
+				else if (n==nowHour && nowBusyness!==undefined) {
 					let busy = splitBusynessString(nowBusyness)
 					if (busy[BROKEN]>0) {
 						let barHeight = busy[BROKEN] / busy[TOTAL] * 100;

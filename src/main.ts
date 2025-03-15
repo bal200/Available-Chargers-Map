@@ -1,4 +1,4 @@
-import { MarkerClusterer, Renderer } from "@googlemaps/markerclusterer";
+import { Marker, MarkerClusterer, Renderer } from "@googlemaps/markerclusterer";
 import { debounce, getCounts } from "./helpers.js";
 import { openInfoWindow } from "./info-window.js"
 import { apiLoadChargers, Site } from "./services.js";
@@ -16,7 +16,7 @@ async function initMap(): Promise<void> {
   MarkerLibrary = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
 
   map = new Map(document.getElementById("map") as HTMLElement, {
-    zoom: 10,
+    zoom: 11,
     center: { lat: 53.300, lng: -2.402 },
     mapId: 'available_chargers',
   });
@@ -66,31 +66,23 @@ async function loadChargers() {
     } else {
       /* CREATE new marker */
       await createMarker(site, markerCluster)
-    }
-    if (!oldSite) {
       sites.push(site)
       markers.push(site.marker)
+    }
+    if (!oldSite) {
     }
   }
 }
 
-async function createMarker(site: Site, markerCluster: MarkerClusterer) {
-  let {colour, border, size} = colourForSite(site)
+function createMarker(site: Site, markerCluster: MarkerClusterer) {
+  const listMarker = document.createElement('div')
+  listMarker.className = 'list-marker'
+  listMarker.append( buildMarkerRow(site) )
 
-  const glyphImg = document.createElement('img');
-  glyphImg.src = `pins/operator-${site.party_id}.png`;
-  if (size===0.75) glyphImg.width=16;
-  
-  const pin = new MarkerLibrary.PinElement({
-    background: colour,
-    borderColor: border || colour,
-    scale: size,
-    glyph: glyphImg,
-  });
   site.marker = new MarkerLibrary.AdvancedMarkerElement({
     map: map,
     position: { lat: site.latitude, lng: site.longitude },
-    content: pin.element,
+    content: listMarker,
   });
   /* @ts-ignore */ 
   site.marker.site = site;
@@ -116,37 +108,48 @@ async function updateMarker(site: Site, oldSite: Site) {
       //site = oldSite
 }
 
+function buildMarkerRow(site: Site, first: boolean = true, last: boolean = true) {
+  let { colour } = colourForSite(site)
+  const row = document.createElement('div')
+  row.className = 'row'+ (first ? ' first':'') + (last ? ' last':'')
+  row.style.backgroundColor = colour
+
+  const img = document.createElement('img') as HTMLImageElement;
+  img.src = `pins/operator-${site.party_id}.png`
+  row.append(img)
+
+  const span = document.createElement('div') as HTMLDivElement;
+  span.textContent = site.priceCcs ? Math.round(site.priceCcs * 100) + 'p' : '---'
+  row.append(span)
+  return row
+}
+
+function buildMarkerFooter(text: string, colour: string) {
+  const row = document.createElement('div')
+  row.className = 'row-footer last'
+  row.style.backgroundColor = colour
+
+  const span = document.createElement('div') as HTMLDivElement;
+  span.textContent = text
+  row.append(span)
+  return row
+}
+
 let clusterRenderer: Renderer = {
   render: (cluster, stats, map) => {
     const MAX = 3
+    const length = cluster.markers.length
+    const markers = sortMarkers( cluster.markers )
     const listMarker = document.createElement('div')
     listMarker.className = 'list-marker'
-    for (let i=0; i < cluster.markers.length && i < MAX; i++) {
-      const site = (cluster.markers[i] as any).site as Site;
-      let { colour } = colourForSite(site)
-      const line = document.createElement('div')
-      line.className = 'line'+ (i===0 ? ' first':'') + (i === cluster.markers.length-1 ? ' last':'')
-      line.style.backgroundColor = colour
-
-      const img = document.createElement('img') as HTMLImageElement;
-      img.src = `pins/operator-${site.party_id}.png`
-      line.append(img)
-
-      const span = document.createElement('div') as HTMLDivElement;
-      span.textContent = "79p"
-      line.append(span)
-
-      listMarker.append(line)
+    for (let i=0; i < length && i < MAX; i++) {
+      const site = (markers[i] as any).site as Site;
+      const row = buildMarkerRow(site, i===0, i === length-1)
+      listMarker.append(row)
     }
-    if (cluster.markers.length > MAX) {
-      const line = document.createElement('div')
-      line.className = 'line-footer last'
-      line.style.backgroundColor = '#777'
-
-      const span = document.createElement('div') as HTMLDivElement;
-      span.textContent = `+${cluster.markers.length - MAX}`
-      line.append(span)
-      listMarker.append(line)
+    if (length > MAX) {
+      const row = buildMarkerFooter(`+${length - MAX}`, '#777')
+      listMarker.append(row)
     }
 
     return new MarkerLibrary.AdvancedMarkerElement({
@@ -157,10 +160,32 @@ let clusterRenderer: Renderer = {
   }
 }
 
+function sortMarkers( markers: Marker[]) {
+  let ret = [...markers]
+  return ret.sort( (a,b) => {
+    let aa = statsForSite((a as any).site as Site)
+    let bb = statsForSite((b as any).site as Site)
+    let aValue = aa.colour=='green'?3:( aa.colour=='yellow'?2:( 1 ) )
+    let bValue = bb.colour=='green'?3:( bb.colour=='yellow'?2:( 1 ) )
+    return bValue - aValue
+  })
+}
+
 async function onClusterClick(event, cluster, map) {
   const site = (cluster.markers[0] as any).site
   console.log("Cluster clicked. first site is "+site.name+"");
   await openInfoWindow(site, map)
+}
+
+function statsForSite(site: Site) {
+  let status = parseInt(site.statusCcs || site.statusType2);  /** @TODO: pick ccs or type2 correctly */
+  let colour = "";
+  if ((site.statusCcs || site.statusType2) === undefined) {colour = 'gray'}
+  else if (status > 75) {colour = 'red'}
+  else if (status >= 50) {colour = 'yellow'}
+  else if (status < 50) {colour='green'}
+
+  return { colour }
 }
 
 function colourForSite(site: Site) {

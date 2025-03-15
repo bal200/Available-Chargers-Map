@@ -90,16 +90,13 @@ body {
   align-items:center;
   margin-bottom: 6px;
 }
-.operator-logo {
+.row-top .operator-logo {
   margin-right: 5px;
 }
-.operator-logo>img {
+.row-top .operator-logo>img {
   width: 25px;
 }
-.device-icon {
-  width: 21px;
-}
-.name {
+.row-top .name {
   font-weight: 500;
   margin-bottom: 3px;
 }
@@ -110,9 +107,19 @@ body {
   justify-content: space-between;
   gap: 5px;
 }
-.devices {
-  font-weight: 500;
+.row-bottom .devices {
+  display: flex;
 }
+.row-bottom .device {
+  width: 22px;
+}
+.row-bottom .device-icon {
+  width: 21px;
+}
+.row-bottom .device-speed {
+  font-size: x-small;
+}
+
 .pill {
   position: relative;
   padding: 4px 10px;
@@ -250,9 +257,9 @@ body {
   transform: translate(-50%, 0);
   width: 0;
   height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 4px solid #207868;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #207868;
 }
 
 /*************** Cluster Marker ************************/
@@ -264,20 +271,20 @@ body {
   position: relative;
   /* overflow: hidden; */
 }
-.list-marker .line {
+.list-marker .row {
   /* background-color: #0cde5b; */
   padding: 1px 1px;
   height: 22px;
 }
-.list-marker .line.first {
+.list-marker .row.first {
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
 }
-.list-marker .line.last {
+.list-marker .row.last {
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
 }
-.list-marker .line-footer {
+.list-marker .row-footer {
   background-color: #777;
   padding: 0 1px;
   font-size: 12px;
@@ -288,12 +295,12 @@ body {
   border-bottom-right-radius: 8px;
 }
 
-.list-marker .line>img {
+.list-marker .row>img {
   width: 22px;
   height: 22px;
   margin-right: 2px;
 }
-.list-marker .line>div {
+.list-marker .row>div {
   display: inline-block;
   line-height: 22px;
   vertical-align: top;

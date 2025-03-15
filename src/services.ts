@@ -27,6 +27,19 @@ export function splitBusynessString(str: BusynessString) {
 	return arr.map(elem => Number.parseFloat(elem))
 }
 
+export function isInUse( status: OcpiStatus ) {
+  switch (status) {
+    case "CHARGING": case "RESERVED": return true
+    default: return false
+  }
+}
+export function isBroken( status: OcpiStatus ) {
+  switch (status) {
+    case "INOPERATIVE": case "OUTOFORDER": case "BLOCKED": case "REMOVED": return true
+    default: return false
+  }
+}
+
 export type Site = {
 	/** Eg. GB-SSM-612345 */
 	id: string,
@@ -45,7 +58,7 @@ export type Site = {
 		status?: OcpiStatus,
 		connectors: {
 			id: number, /** 1 or 2, to indicate the order */
-			type: OcpiPlugType, /* "IEC_62196_T2_COMBO" */
+			standard: OcpiPlugType, /* "IEC_62196_T2_COMBO" */
 			max_electric_power: number, // 300000 in Watts
 		}[],
 	}[],
@@ -53,6 +66,8 @@ export type Site = {
 	statusType2?: string,
 	busynessCcs?: BusynessString,
 	busynessType2?: BusynessString,
+	priceCcs?: number,
+	priceType2?: number,
 
 	/** Added frontend */
 	marker?: google.maps.marker.AdvancedMarkerElement,

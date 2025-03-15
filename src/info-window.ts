@@ -1,6 +1,6 @@
 import { getCounts } from "./helpers.ts";
-import { drawHistogram } from "./histogram.ts";
-import { Site } from "./services.ts";
+import { drawHistogram, buildHistogram } from "./histogram.ts";
+import { isBroken, isInUse, OcpiPlugType, OcpiStatus, Site } from "./services.ts";
 
 const SITE_LOG_URL = 'http://localhost:8082/siteLogDump'
 
@@ -10,7 +10,6 @@ export let infowindow: google.maps.InfoWindow;
 export async function openInfoWindow(site: Site, map: google.maps.Map) {
 	const { InfoWindow } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
 	if (!infowindow) infowindow = new InfoWindow({ content: '' });
-	console.log(site.name+" clicked");
 	infowindow.setContent( buildInfoContent(site) );
 	infowindow.open({
 		anchor: site.marker,
@@ -24,12 +23,12 @@ export async function openInfoWindow(site: Site, map: google.maps.Map) {
 		document.getElementById("date-next")?.addEventListener('click', () => drawHistogram({ dateShift: +1 }));
 		document.getElementById("hist-ccs")?.addEventListener('click', () => drawHistogram({ plug: 'ccs' }));
 		document.getElementById("hist-type2")?.addEventListener('click', () => drawHistogram({ plug: 'type2' }));
-	},20)
+	},10)
 
 	drawHistogram({site, plug, date: new Date()})
 }
 
-function buildInfoContent(site) {
+function buildInfoContent(site: Site) {
 	let counts = getCounts(site), i=0;
 	let str = `
 	<div id="info-window" class="row-top">
@@ -41,18 +40,24 @@ function buildInfoContent(site) {
 			<div class="network">${site.operatorName}</div>
 		</div>
 	</div>
-	<div id="histogram"></div>
+	<div id="histogram">${buildHistogram()}</div>
 	<div class="row-bottom">
 		<div class="devices">`
-			for (i=0; i<counts.ccs.total; i++){
-				str += `<img src="img/ccs.png" class="device-icon" />`;
+			for (let conn of filterConnectors(site, 'IEC_62196_T2_COMBO')){
+				str += `<div class="device">
+				  <img src="img/ccs${conn.status}.png" class="device-icon" />
+				  <div class="device-speed">${conn.powerKw}</div>
+				</div>`;
 			}
-			for (i=0; i<counts.type2.total; i++){
-				str += `<img src="img/type2.png" class="device-icon" />`;
+			for (let conn of filterConnectors(site, 'IEC_62196_T2')){
+				str += `<div class="device">
+				  <img src="img/type2${conn.status}.png" class="device-icon">
+				  <div class="device-speed">${conn.powerKw}</div>
+				</div>`;
 			}
 			str+=`
 		</div>
-		<div class="price">**p/kwh</div>`;
+		<div class="price">${site.priceCcs?site.priceCcs*100+'p/kwh':'price unknown'}</div>`;
 		let status = parseInt(site.statusCcs);
 		if (site.statusCcs===null || site.statusCcs===undefined) str+= `<span></span>`;
 		else if (status > 75) str+= `<span class="pill red">FULL</span>`;
@@ -69,4 +74,20 @@ function buildInfoContent(site) {
 	</div>
 	`;
 	return str;
+}
+
+function filterConnectors(site: Site, standard: OcpiPlugType) {
+	let out: {powerKw: string, status: string}[] = []
+	for (let evse of site.evses) {
+		for (let conn of evse.connectors) {
+			if (conn.standard === standard) {
+				let status = (isInUse(evse.status) || isBroken(evse.status)? '_grey':'')
+				out.push({
+				  powerKw: (conn.max_electric_power / 1000).toFixed(0) + 'kW',
+					status,
+				})
+			}
+		}
+	}
+	return out
 }
