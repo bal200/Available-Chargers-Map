@@ -1,3 +1,4 @@
+import { OcpiPlugType, Site } from "./services";
 
 
 export function debounce(func, timeout = 300){
@@ -23,4 +24,22 @@ export function getCounts(site) {
       outoforder: s2[2],
     },
   }
+}
+
+export function findSiteMaxPower(site: Site, standard: OcpiPlugType) {
+  let maxPower: number = 0
+  for (let evse of site.evses) {
+    for (let conn of evse.connectors) {
+      if (conn.standard === standard) {
+        let power = Math.round(conn.max_electric_power / 1000)
+        if (power > maxPower) maxPower = power; 
+      }
+    }
+  }
+  let speed='slow'
+  if (maxPower >= 43) speed='rapid';
+  if (maxPower >= 100) speed='ultra';
+  if (maxPower >= 250) speed='ultraultra';
+
+  return {maxPower, speed}
 }

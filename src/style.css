@@ -163,8 +163,30 @@ body {
   margin-bottom: 7px;
 }
 .outer {
+  position: relative;
 	/* border: 1px solid gray; */
 }
+.left-arrow {
+  position: absolute;
+  left: 0; top: 28%;
+}
+.right-arrow {
+  position: absolute;
+  right: 0; top: 28%;
+}
+.icon-button {
+  border: 0; padding: 0; background: 0;
+  color: #00000055;
+}
+.icon-button:hover {
+  color: #00000088;
+}
+.date {
+  position: absolute;
+  left: 4px; top: 2px;
+  color: #000000BB; 
+}
+
 .graph {
 	height: 60px;
 	display: flex;
@@ -272,6 +294,7 @@ body {
   /* overflow: hidden; */
 }
 .list-marker .row {
+  position: relative;
   /* background-color: #0cde5b; */
   padding: 1px 1px;
   height: 22px;
@@ -295,16 +318,26 @@ body {
   border-bottom-right-radius: 8px;
 }
 
-.list-marker .row>img {
+.list-marker .icon {
   width: 22px;
   height: 22px;
   margin-right: 2px;
+}
+.list-marker .lightning {
+  position: absolute;
+  left: 1px;
+  top: 12px;
 }
 .list-marker .row>div {
   display: inline-block;
   line-height: 22px;
   vertical-align: top;
 }
+.list-marker div.low {
+  text-shadow: 1px 1px black;
+}
 
-
+.list-marker div.high {
+  color: black;
+}
 

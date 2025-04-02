@@ -18,14 +18,21 @@ export async function drawHistogram({dateShift, plug, site, date} : {dateShift?:
 		nowHour = new Date().getUTCHours()
 		nowBusyness = (infoState.plug==='ccs' ? infoState.site.busynessCcs : infoState.site.busynessType2);
 	}
-	document.getElementById('histogram').innerHTML = buildHistogram(res, nowHour, nowBusyness);
+	document.getElementById('histogram').innerHTML = buildHistogram(res, nowHour, nowBusyness, infoState.date);
 
+	document.getElementById("date-prev")?.addEventListener('click', () => drawHistogram({ dateShift: -1 }));
+	document.getElementById("date-next")?.addEventListener('click', () => drawHistogram({ dateShift: +1 }));
+	document.getElementById("hist-ccs")?.addEventListener('click', () => drawHistogram({ plug: 'ccs' }));
+	document.getElementById("hist-type2")?.addEventListener('click', () => drawHistogram({ plug: 'type2' }));
 }
 
-export function buildHistogram(data?: HistogramData, nowHour?: number, nowBusyness?:BusynessString) {
+export function buildHistogram(data?: HistogramData, nowHour?: number, nowBusyness?:BusynessString, date?: Date) {
 	let str = `
 	<div class="outer">
 	  <div class="axis-line"></div>
+		<button id="date-prev" class="left-arrow icon-button"><img src="img/left-arrow.svg" /></button>
+		<button id="date-next" class="right-arrow icon-button"><img src="img/right-arrow.svg" /></button>
+		<div class="date">${date ? date.toLocaleDateString() : ''}</div>
 		<div class="graph">`
 			for(let n=0; n<24; n++) {
 				str+=`<div class="column">`

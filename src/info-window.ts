@@ -18,12 +18,6 @@ export async function openInfoWindow(site: Site, map: google.maps.Map) {
 	});
 	let counts = getCounts(site)
 	let plug = (counts.ccs?.total>0 ? 'ccs' : 'type2'); /** TODO: */
-	setTimeout(()=> {
-		document.getElementById("date-prev")?.addEventListener('click', () => drawHistogram({ dateShift: -1 }));
-		document.getElementById("date-next")?.addEventListener('click', () => drawHistogram({ dateShift: +1 }));
-		document.getElementById("hist-ccs")?.addEventListener('click', () => drawHistogram({ plug: 'ccs' }));
-		document.getElementById("hist-type2")?.addEventListener('click', () => drawHistogram({ plug: 'type2' }));
-	},10)
 
 	drawHistogram({site, plug, date: new Date()})
 }
@@ -68,8 +62,6 @@ function buildInfoContent(site: Site) {
 	<div class="second-row-bottom">`
 		if (counts.ccs?.total>0) str+=`<button id="hist-ccs">CCS</button>&nbsp;`
 		if (counts.type2?.total>0) str+=`<button id="hist-type2">Type 2</button>&nbsp;`
-		str+=`<button id="date-prev"> <<< </button>&nbsp;`
-		str+=`<button id="date-next"> >>> </button>&nbsp;`
 		str+=`<a href="${SITE_LOG_URL}?site=${site.id}" target="_blank">log dump</a>
 	</div>
 	`;
